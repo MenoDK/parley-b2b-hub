@@ -1,0 +1,97 @@
+# Two companies and one PostgreSQL server holding a database for each.
+#   make demo   builds and starts everything; the shop and this site are on http://localhost:8000
+#   make e2e    runs the browser tests against the same stack
+# Every secret comes from .env (make env writes one with fresh random values). Nothing here is a real credential.
+name: parley
+
+x-service: &service
+  build: .
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: parley
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?run "make env" first}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parley -d origin && pg_isready -U parley -d partner"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  origin:
+    <<: *service
+    ports: ["127.0.0.1:8000:3000"]
+    environment:
+      ROLE: origin
+      PORT: "3000"
+      APP_ENV: development
+      LAB_MODE: "true"
+      SITE_DIR: /app/site
+      DATABASE_URL: postgresql://parley:${DB_PASSWORD}@db:5432/origin
+      API_KEY: ${API_KEY:-change-me}
+      PEER_NAME: partner
+      PEER_URL: http://partner:3000
+      PEER_API_KEY: ${API_KEY:-change-me}
+      SECRET_OUT: ${ORIGIN_TO_PARTNER_SECRET:?run "make env" first}
+      SECRET_IN: ${PARTNER_TO_ORIGIN_SECRET:?run "make env" first}
+      PUBLIC_URL: http://localhost:8000
+      SERVICE_URL: http://origin:3000
+      ALLOWED_RETURN_ORIGINS: https://shop.example.com
+      VAULT_KEYS: v1:${VAULT_KEY:?run "make env" first}
+      BLIND_INDEX_KEY: ${BLIND_INDEX_KEY:?run "make env" first}
+
+  partner:
+    <<: *service
+    ports: ["127.0.0.1:8001:3000"]
+    environment:
+      ROLE: partner
+      PORT: "3000"
+      APP_ENV: development
+      LAB_MODE: "true"
+      DATABASE_URL: postgresql://parley:${DB_PASSWORD}@db:5432/partner
+      API_KEY: ${API_KEY:-change-me}
+      PEER_NAME: origin
+      PEER_URL: http://origin:3000
+      PEER_API_KEY: ${API_KEY:-change-me}
+      SECRET_OUT: ${PARTNER_TO_ORIGIN_SECRET:?run "make env" first}
+      SECRET_IN: ${ORIGIN_TO_PARTNER_SECRET:?run "make env" first}
+      PUBLIC_URL: http://localhost:8001
+      SERVICE_URL: http://partner:3000
+      ALLOWED_RETURN_ORIGINS: https://shop.example.com
+      VAULT_KEYS: v1:${VAULT_KEY_PARTNER:?run "make env" first}
+      BLIND_INDEX_KEY: ${BLIND_INDEX_KEY_PARTNER:?run "make env" first}
+
+  # Browser tests. They share the shop's network namespace, so the page is http://localhost:3000, a secure context
+  # (WebCrypto needs one to sign in the lab) without any browser flag.
+  e2e:
+    profiles: [e2e]
+    image: mcr.microsoft.com/playwright:v1.49.1-jammy
+    network_mode: "service:origin"
+    working_dir: /work/e2e
+    volumes:
+      - ./e2e:/work/e2e
+      - ./docs/img:/work/docs/img
+    environment:
+      E2E_BASE_URL: http://localhost:3000
+      E2E_API_KEY: ${API_KEY:-change-me}
+      CI: "1"
+    depends_on:
+      origin: { condition: service_healthy }
+      partner: { condition: service_healthy }
+    command: ["bash", "-lc", "npm ci --no-audit --no-fund && npx tsc --noEmit && npx playwright test"]
+
+volumes:
+  dbdata:
