@@ -131,6 +131,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The binary, pinned and checksum-verified, instead of gitleaks-action: the action scans "<first commit>^..HEAD",
+      # and the first commit of a new repository has no parent, so it fails on the very first push.
+      - name: Install gitleaks (pinned, checksum verified)
+        run: |
+          v=8.24.3
+          base=https://github.com/gitleaks/gitleaks/releases/download/v$v
+          curl -sSfL -o gitleaks.tgz "$base/gitleaks_${v}_linux_x64.tar.gz"
+          curl -sSfL -o checksums.txt "$base/gitleaks_${v}_checksums.txt"
+          sha256sum --check --ignore-missing checksums.txt
+          tar xzf gitleaks.tgz gitleaks
+      - name: Scan the whole history
+        run: ./gitleaks git --no-banner --redact -v .
