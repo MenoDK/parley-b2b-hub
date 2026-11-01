@@ -99,6 +99,17 @@ export async function buildApp(config: Config, overrides: Overrides = {}): Promi
   else registerPartner(app, ctx);
   if (config.labMode) registerLab(app, ctx);
 
+  if (!config.siteDir) {
+    // A service with no page of its own still answers its root, so opening its port in a browser explains itself
+    // instead of looking broken.
+    app.get('/', async () => ({
+      service: 'parley',
+      role: config.role,
+      message: 'This is an API with no page of its own. The demo site and the lab are served by the origin service.',
+      health: '/health/ready',
+    }));
+  }
+
   if (config.siteDir) {
     app.addHook('onSend', async (request, reply) => {
       if (!request.url.startsWith('/v1/') && !request.url.startsWith('/health/'))

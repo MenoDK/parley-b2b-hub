@@ -46,6 +46,24 @@ describe.skipIf(!DATABASE_URL)('the demo site served by the shop', () => {
   });
 
   it('is off when SITE_DIR is empty: the partner serves only its API', async () => {
-    expect((await world.partner.built.app.inject({ method: 'GET', url: '/' })).statusCode).toBe(404);
+    const root = await world.partner.built.app.inject({ method: 'GET', url: '/' });
+    expect(root.headers['content-type']).toContain('application/json'); // its own pointer, never the page
+    expect((await world.partner.built.app.inject({ method: 'GET', url: '/lab.html' })).statusCode).toBe(404);
+  });
+});
+
+describe.skipIf(!DATABASE_URL)('a service without a page', () => {
+  let world: World;
+  beforeAll(async () => {
+    world = await startWorld({});
+  });
+  afterAll(async () => {
+    await world.close();
+  });
+
+  it('says what it is at its root instead of answering 404', async () => {
+    const res = await world.partner.built.app.inject({ method: 'GET', url: '/' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ service: 'parley', role: 'partner', health: '/health/ready' });
   });
 });

@@ -21,15 +21,31 @@ export class TestClock implements Clock {
   }
 }
 
-const freePort = (): Promise<number> =>
-  new Promise((resolve, reject) => {
+// Ports come from a range BELOW the kernel's ephemeral range (32768+). Asking the OS for port 0 hands out an
+// ephemeral port, and the outgoing connections of tests running in parallel use the same range: a port that was free
+// when probed could be taken by someone else's client socket before the server got to listen on it.
+const PORT_FROM = 20000;
+const PORT_TO = 29999;
+const handedOut = new Set<number>();
+
+const canListen = (port: number): Promise<boolean> =>
+  new Promise((resolve) => {
     const server = createServer();
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const { port } = server.address() as { port: number };
-      server.close(() => resolve(port));
-    });
+    server.once('error', () => resolve(false));
+    server.listen(port, '127.0.0.1', () => server.close(() => resolve(true)));
   });
+
+const freePort = async (): Promise<number> => {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const port = PORT_FROM + Math.floor(Math.random() * (PORT_TO - PORT_FROM + 1));
+    if (handedOut.has(port)) continue;
+    if (await canListen(port)) {
+      handedOut.add(port);
+      return port;
+    }
+  }
+  throw new Error('no free port found for the test world');
+};
 
 export interface Side {
   built: Built;
