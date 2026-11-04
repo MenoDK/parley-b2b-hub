@@ -72,7 +72,7 @@
   function h(tag, props, ...kids) {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(props || {})) {
-      if (v == null || v === false) continue;
+      if (v === null || v === undefined || v === false) continue;
       if (k === 'class') el.className = v;
       else if (k === 'html') el.innerHTML = v; // trusted strings from content.js only
       else if (k === 'style') el.style.cssText = v; // CSSOM, not a style attribute: allowed by a strict CSP
@@ -80,7 +80,7 @@
       else el.setAttribute(k, v === true ? '' : String(v));
     }
     for (const kid of kids.flat(Infinity)) {
-      if (kid == null || kid === false) continue;
+      if (kid === null || kid === undefined || kid === false) continue;
       el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
     }
     return el;
@@ -224,7 +224,7 @@
   const languageName = () => LANGS.find(([code]) => code === LANG)[1];
 
   /** Overlay the translated text on the English content. Shape comes from the base, so a stale or misspelt key in a
-   *  translation is ignored here and caught by scripts/check-i18n.mjs; arrays merge by position. */
+   *  translation is ignored here, and the language tests catch it; arrays merge by position. */
   function localize(base, over) {
     if (over === undefined || over === null) return base;
     if (Array.isArray(base)) return base.map((item, i) => localize(item, Array.isArray(over) ? over[i] : undefined));
@@ -894,7 +894,7 @@
   const button = (label, onClick, { variant = 'secondary', ic, small = false } = {}) =>
     h('button', { type: 'button', class: `button ${variant}${small ? ' small' : ''}`, onclick: (e) => busy(e.currentTarget, onClick) }, label, ic ? icon(ic, 15) : null);
   const badge = (text, kind = '') => h('span', { class: `badge ${kind}` }, text);
-  const out = (value, id) => h('pre', { class: 'out', id: id || null, tabindex: '0' }, value == null ? '' : pretty(value));
+  const out = (value, id) => h('pre', { class: 'out', id: id || null, tabindex: '0' }, value === null || value === undefined ? '' : pretty(value));
   const kv = (obj) => h('dl', { class: 'kv' }, Object.entries(obj).flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v instanceof Node ? v : String(v))]));
   const box = (title, hint, ...kids) => h('section', { class: 'box' }, title ? h('h3', {}, title) : null, hint ? h('p', { class: 'hint' }, hint) : null, ...kids);
   const labelled = (text, control) => [h('label', { for: control.id }, text), control];
