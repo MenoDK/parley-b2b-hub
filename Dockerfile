@@ -28,8 +28,8 @@ COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json ./
 COPY --chown=node:node site ./site
-USER node
+USER 1000:1000
 EXPOSE 3000
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=12 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 CMD ["node", "dist/server.js"]
