@@ -137,9 +137,10 @@ jobs:
         run: |
           v=8.24.3
           base=https://github.com/gitleaks/gitleaks/releases/download/v$v
-          curl -sSfL -o gitleaks.tgz "$base/gitleaks_${v}_linux_x64.tar.gz"
-          curl -sSfL -o checksums.txt "$base/gitleaks_${v}_checksums.txt"
-          sha256sum --check --ignore-missing checksums.txt
-          tar xzf gitleaks.tgz gitleaks
+          archive=gitleaks_${v}_linux_x64.tar.gz # keep the release's file name: the checksum list refers to it
+          curl -sSfLO "$base/$archive"
+          curl -sSfLO "$base/gitleaks_${v}_checksums.txt"
+          sha256sum --check --ignore-missing "gitleaks_${v}_checksums.txt" | grep -F "$archive: OK"
+          tar xzf "$archive" gitleaks
       - name: Scan the whole history
         run: ./gitleaks git --no-banner --redact -v .
