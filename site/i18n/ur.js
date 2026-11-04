@@ -1,4 +1,4 @@
-/* اردو۔ صرف متن: کلیدیں content.js کی ساخت کی پیروی کرتی ہیں، اور جو چھوٹ جائے وہ انگریزی میں دکھائی دیتا ہے۔ */
+/* Urdu overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).ur = {
   title: 'parley-b2b-hub · دو کمپنیوں کے درمیان ایسی حوالگی جو خاموشی سے ناکام نہیں ہوتی',
   loading: {

@@ -1,4 +1,4 @@
-/* Español. Solo texto: las claves siguen la forma de content.js, y lo que falte se muestra en inglés. */
+/* Spanish overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).es = {
   title: 'parley-b2b-hub · un traspaso entre dos empresas que no falla en silencio',
   loading: {

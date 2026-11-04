@@ -1,4 +1,4 @@
-/* Deutsch. Nur Text: Die Schlüssel folgen der Form von content.js, was fehlt, erscheint auf Englisch. */
+/* German overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).de = {
   title: 'parley-b2b-hub · eine Übergabe zwischen zwei Unternehmen, die nicht still scheitert',
   loading: {

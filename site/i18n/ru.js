@@ -1,4 +1,4 @@
-/* Русский. Только текст: ключи повторяют структуру content.js, а недостающее показывается по-английски. */
+/* Russian overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).ru = {
   title: 'parley-b2b-hub · передача клиента между двумя компаниями, которая не ломается молча',
   loading: {

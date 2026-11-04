@@ -1,4 +1,4 @@
-/* 简体中文。只含文字：键与 content.js 的结构一致，缺少的部分会显示英文。 */
+/* Simplified Chinese overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).zh = {
   title: 'parley-b2b-hub · 两家公司之间不会悄悄失败的交接',
   loading: {

@@ -1,4 +1,4 @@
-/* العربية. نصوص فقط: المفاتيح تتبع بنية content.js، وما يُحذف يظهر بالإنجليزية. */
+/* Arabic overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).ar = {
   title: 'parley-b2b-hub · تسليم بين شركتين لا يفشل بصمت',
   loading: {

@@ -1,4 +1,4 @@
-/* 日本語。テキストのみ：キーは content.js の構造に従い、足りない部分は英語で表示されます。 */
+/* Japanese overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).ja = {
   title: 'parley-b2b-hub · 黙って失敗しない、二社間の引き継ぎ',
   loading: {

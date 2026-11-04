@@ -1,4 +1,4 @@
-/* Bahasa Indonesia. Hanya teks: kunci mengikuti bentuk content.js, dan yang belum ada tampil dalam bahasa Inggris. */
+/* Indonesian overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).id = {
   title: 'parley-b2b-hub · serah terima antara dua perusahaan yang tidak gagal diam-diam',
   loading: {

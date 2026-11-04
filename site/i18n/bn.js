@@ -1,4 +1,4 @@
-/* বাংলা। শুধু লেখা: কী-গুলো content.js-এর কাঠামো মানে, আর যা বাদ পড়ে তা ইংরেজিতে দেখায়। */
+/* Bengali overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).bn = {
   title: 'parley-b2b-hub · দুই কোম্পানির মধ্যে এমন হস্তান্তর যা নীরবে ব্যর্থ হয় না',
   loading: {

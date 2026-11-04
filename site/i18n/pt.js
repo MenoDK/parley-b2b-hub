@@ -1,4 +1,4 @@
-/* Português (Brasil). Só texto: as chaves seguem a forma de content.js, e o que faltar aparece em inglês. */
+/* Brazilian Portuguese overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).pt = {
   title: 'parley-b2b-hub · uma transferência entre duas empresas que não falha em silêncio',
   loading: {

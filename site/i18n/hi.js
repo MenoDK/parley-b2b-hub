@@ -1,4 +1,4 @@
-/* हिन्दी। केवल पाठ: कुंजियाँ content.js की बनावट का पालन करती हैं, और जो छूटे वह अंग्रेज़ी में दिखता है। */
+/* Hindi overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).hi = {
   title: 'parley-b2b-hub · दो कंपनियों के बीच ऐसा हैंड-ओवर जो चुपचाप विफल नहीं होता',
   loading: {

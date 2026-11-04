@@ -1,4 +1,4 @@
-/* 한국어. 텍스트만 담았습니다: 키는 content.js의 구조를 따르며, 빠진 부분은 영어로 표시됩니다. */
+/* Korean overlay. Text only: the keys mirror the shape of content.js, and anything missing falls back to English. */
 (window.SITE_I18N ||= {}).ko = {
   title: 'parley-b2b-hub · 조용히 실패하지 않는, 두 회사 사이의 인계',
   loading: {
