@@ -7,10 +7,12 @@
 [![CI](https://github.com/MenoDK/parley-b2b-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/MenoDK/parley-b2b-hub/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-22-339933)
 ![Typing](https://img.shields.io/badge/tsc-strict-success)
-![Tests](https://img.shields.io/badge/tests-74%20(38%20on%20real%20PostgreSQL)%20·%2020%20browser%20·%2016%20mutants%20caught-success)
+![Tests](https://img.shields.io/badge/tests-75%20(39%20on%20real%20PostgreSQL)%20·%2042%20browser%20·%2016%20mutants%20caught-success)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ![The landing page](docs/img/landing.png)
+
+The landing page and the sign-in are available in **14 languages** (English, 中文, हिन्दी, Español, Français, العربية, বাংলা, Português, Русский, اردو, Bahasa Indonesia, Deutsch, 日本語, 한국어), including right-to-left layouts: open `/?lang=ja` or use the selector in the header. The lab body, the decision records and this README stay in English; the translations were written for this project and a native review is welcome.
 
 ## Run it in a minute
 
@@ -70,12 +72,12 @@ curl -s $API/v1/lab/peer-state -H "$KEY" | python3 -m json.tool | head -30   # t
 
 ```bash
 docker compose -f compose.dev.yml up -d --wait       # a PostgreSQL for the tests (127.0.0.1:15433)
-make install && make check                           # biome, tsc --strict, 74 tests (38 of them on real PostgreSQL)
+make install && make check                           # biome, tsc --strict, 75 tests (39 of them on real PostgreSQL)
 make mutate                                          # breaks each of 16 critical rules on purpose; a test must notice
 make e2e                                             # Playwright + axe in a container, against the same stack as `make demo`
 ```
 
-The 38 tests that need a database are reported as *skipped* when `DATABASE_URL` is not set; the Makefile sets it to the dev compose database, and CI runs them against a PostgreSQL service.
+The 39 tests that need a database are reported as *skipped* when `DATABASE_URL` is not set; the Makefile sets it to the dev compose database, and CI runs them against a PostgreSQL service.
 
 ## What it is
 
@@ -161,6 +163,7 @@ Each has a record with the alternatives that lost: [docs/adr](docs/adr/README.md
 | Tests that start both services and a real database; mutation checking of the rules | `test/*.test.ts`, `scripts/mutation-check.mjs` |
 | A landing page whose sample output is recorded from the running code and checked by a test | `scripts/record-transcripts.ts`, `test/transcripts.test.ts` |
 | Browser tests with WCAG A/AA scans in light and dark, on the real stack | `e2e/` |
+| The landing page and sign-in in 14 languages, two of them right-to-left, with English fallback and tests that read the translation tables | `site/i18n/`, `e2e/tests/i18n.spec.ts` |
 | Container hardening: multi-stage, non-root, read-only filesystem, `cap_drop: ALL`, health-gated Compose | `Dockerfile`, `docker-compose.yml` |
 | Documentation as code: a map, handoff, checklist, ADRs, enforced by `docsguard` | `docs/`, `CLAUDE.md`, `AGENTS.md`, `.claude/` |
 

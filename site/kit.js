@@ -63,8 +63,9 @@
   };
 
   /* ------------------------------------------------------------------ small helpers */
-  const SITE = window.SITE;
-  if (!SITE) throw new Error('content.js must define window.SITE before kit.js');
+  const BASE = window.SITE;
+  if (!BASE) throw new Error('content.js must define window.SITE before kit.js');
+  let SITE = BASE; // the page content in the visitor's language (see "language" below); English until one is applied
   const $ = (sel, root = document) => root.querySelector(sel);
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -84,9 +85,10 @@
     }
     return el;
   }
+  const DIRECTIONAL = new Set(['arrow', 'arrow-up-right', 'chevron-right']); // mirrored by CSS under dir="rtl"
   const icon = (name, size = 20) =>
     h('span', {
-      class: 'ico',
+      class: DIRECTIONAL.has(name) ? 'ico dir' : 'ico',
       'aria-hidden': 'true',
       html: `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.spark}</svg>`,
     });
@@ -147,7 +149,162 @@
       document.dispatchEvent(new CustomEvent('kit:theme'));
     });
   })();
-  document.title = SITE.title || SITE.name;
+
+  /* ------------------------------------------------------------------ language
+     English is the source: the strings below and content.js. Every other language is an overlay loaded on demand:
+       i18n/ui.js      page chrome (navigation, buttons, footer, author bio), shared by every site and kept identical
+       i18n/<code>.js  this site's own content, same shape as window.SITE, only the text
+     Whatever an overlay does not say falls back to English, so a half-translated language still works. */
+  const LANGS = [
+    ['en', 'English'], ['zh', '中文'], ['hi', 'हिन्दी'], ['es', 'Español'], ['fr', 'Français'], ['ar', 'العربية'], ['bn', 'বাংলা'],
+    ['pt', 'Português'], ['ru', 'Русский'], ['ur', 'اردو'], ['id', 'Bahasa Indonesia'], ['de', 'Deutsch'], ['ja', '日本語'], ['ko', '한국어'],
+  ];
+  const LANG_CODES = LANGS.map(([code]) => code);
+  const RTL = new Set(['ar', 'ur']);
+  const HTML_LANG = { zh: 'zh-Hans', pt: 'pt-BR' };
+  const UI_EN = {
+    language: 'Language',
+    home: '{name} home',
+    'theme.light': 'Use the light theme',
+    'theme.dark': 'Use the dark theme',
+    'menu.open': 'Open menu',
+    'menu.close': 'Close menu',
+    'nav.main': 'Main',
+    'nav.tour': 'Tour',
+    'nav.hard': 'Hard parts',
+    'nav.run': 'Run it',
+    'nav.under': 'Under the hood',
+    'nav.about': 'About',
+    'nav.overview': 'Overview',
+    'nav.source': 'Source',
+    skip: 'Skip to content',
+    'skip.form': 'Skip to the form',
+    'skip.lab': 'Skip to the lab',
+    copy: 'Copy',
+    copied: 'Copied',
+    'copy.manual': 'Select and copy',
+    'art.note': 'Original illustration',
+    'tour.group': 'Explore the product',
+    'tour.output': 'Example output',
+    'tour.open': 'Open this in the lab',
+    'tour.tag': 'Real output',
+    'hard.group': 'Hard parts to try',
+    'hard.see': 'You should see',
+    'hard.try': 'Try it in the lab',
+    stack: 'Stack',
+    measured: 'Measured, not claimed',
+    'not.built': 'Not built yet',
+    'about.eyebrow': 'Who built this',
+    'about.repo': 'This repository',
+    'faq.eyebrow': 'Questions',
+    'faq.title1': 'Asked often,',
+    'faq.title2': 'answered plainly.',
+    'faq.text': 'Short answers. The long ones are in the decision records.',
+    'footer.line1': '{name} · MIT licence · fictional data only',
+    'footer.line2': 'Written by hand, tested against real services.',
+    'password.show': 'Show password',
+    'password.hide': 'Hide password',
+    'auth.scene': 'Illustration',
+    'auth.local': '{language} · local environment',
+    'lab.sections': 'Lab sections',
+    'lab.signout': 'Sign out',
+    'author.role': 'Full-stack developer',
+    'author.place': 'São Paulo, Brazil',
+    'author.bio1': 'I build web, mobile and desktop products from the business rule to the deployment, and I have been doing it professionally since 2022: React, Next.js, TypeScript, Node.js and Python, with APIs, databases and applied AI.',
+    'author.bio2': 'The projects I enjoy most are the ones where a failure has a cost: money that must add up, data that must stay inside a boundary, a retry that must not run twice. Those are the parts these repositories try to prove with tests, not describe.',
+    'author.languages': 'English (technical, intermediate) · Spanish (intermediate) · Portuguese (native)',
+  };
+  let LANG = 'en';
+  let UI = UI_EN;
+  const t = (key, vars) => {
+    let text = UI[key] ?? UI_EN[key] ?? key;
+    if (vars) for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, v);
+    return text;
+  };
+  const languageName = () => LANGS.find(([code]) => code === LANG)[1];
+
+  /** Overlay the translated text on the English content. Shape comes from the base, so a stale or misspelt key in a
+   *  translation is ignored here and caught by scripts/check-i18n.mjs; arrays merge by position. */
+  function localize(base, over) {
+    if (over === undefined || over === null) return base;
+    if (Array.isArray(base)) return base.map((item, i) => localize(item, Array.isArray(over) ? over[i] : undefined));
+    if (base && typeof base === 'object') {
+      if (typeof over !== 'object') return base;
+      const merged = {};
+      for (const key of Object.keys(base)) merged[key] = localize(base[key], over[key]);
+      return merged;
+    }
+    return typeof over === typeof base ? over : base;
+  }
+  function pickLanguage() {
+    const asked = new URLSearchParams(location.search).get('lang'); // ?lang=ja for a link that opens in a language
+    if (asked && LANG_CODES.includes(asked)) return asked;
+    const saved = store.get('lang');
+    if (saved && LANG_CODES.includes(saved)) return saved;
+    for (const tag of navigator.languages || [navigator.language]) {
+      const primary = String(tag).toLowerCase().split('-')[0];
+      if (LANG_CODES.includes(primary)) return primary;
+    }
+    return 'en';
+  }
+  const scriptsLoaded = new Map();
+  function loadScript(src) {
+    if (!scriptsLoaded.has(src)) {
+      scriptsLoaded.set(
+        src,
+        new Promise((resolve) => {
+          const el = document.createElement('script');
+          el.src = src;
+          el.async = true;
+          el.onload = () => resolve(true);
+          el.onerror = () => resolve(false); // a missing translation must never take the page down
+          document.head.append(el);
+        })
+      );
+    }
+    return scriptsLoaded.get(src);
+  }
+  async function applyLanguage(code) {
+    let ui = {};
+    let over;
+    if (code !== 'en') {
+      await Promise.all([loadScript('i18n/ui.js'), loadScript(`i18n/${code}.js`)]);
+      ui = (window.KIT_UI || {})[code] || {};
+      over = (window.SITE_I18N || {})[code];
+    }
+    LANG = code;
+    UI = { ...UI_EN, ...ui };
+    SITE = localize(BASE, over);
+    const root = document.documentElement;
+    root.lang = HTML_LANG[code] || code;
+    root.dir = RTL.has(code) ? 'rtl' : 'ltr';
+    document.title = SITE.title || SITE.name;
+  }
+  function languageSelect() {
+    const select = h(
+      'select',
+      { class: 'lang-select', 'aria-label': t('language') },
+      LANGS.map(([code, name]) => h('option', { value: code, lang: HTML_LANG[code] || code }, name))
+    );
+    select.value = LANG;
+    select.addEventListener('change', () => switchLanguage(select.value));
+    return h('span', { class: 'lang' }, icon('globe', 16), select);
+  }
+  async function switchLanguage(code) {
+    store.set('lang', code);
+    const url = new URL(location.href);
+    if (url.searchParams.has('lang')) {
+      // A ?lang= in the address outranks the saved choice, so a reload would put the old language back.
+      url.searchParams.set('lang', code);
+      history.replaceState(history.state, '', url);
+    }
+    if (document.body.dataset.page === 'lab') return location.reload(); // the lab body is built once and holds live state
+    const y = window.scrollY;
+    await applyLanguage(code);
+    landing();
+    window.scrollTo({ top: y, behavior: 'instant' }); // the page's smooth scrolling would animate from the top
+    $('.lang-select')?.focus();
+  }
 
   /* ------------------------------------------------------------------ loading stage (splash + inline) */
   const DEFAULT_SKETCH = 'M10 118C58 38 104 152 168 78S292 22 332 96';
@@ -206,26 +363,32 @@
   const AUTHOR = {
     name: 'Davi Martins',
     initials: 'DM',
-    role: 'Full-stack developer',
-    place: 'São Paulo, Brazil',
     github: 'https://github.com/MenoDK',
     linkedin: 'https://www.linkedin.com/in/davi-martins-43444a287/',
-    bio: [
-      'I build web, mobile and desktop products from the business rule to the deployment, and I have been doing it professionally since 2022: React, Next.js, TypeScript, Node.js and Python, with APIs, databases and applied AI.',
-      'The projects I enjoy most are the ones where a failure has a cost: money that must add up, data that must stay inside a boundary, a retry that must not run twice. Those are the parts these repositories try to prove with tests, not describe.',
-    ],
-    languages: 'English (technical, intermediate) · Spanish (intermediate) · Portuguese (native)',
+    // The wording is looked up when read, so it follows the language the visitor picked.
+    get role() {
+      return t('author.role');
+    },
+    get place() {
+      return t('author.place');
+    },
+    get bio() {
+      return [t('author.bio1'), t('author.bio2')];
+    },
+    get languages() {
+      return t('author.languages');
+    },
   };
 
   function brand(href) {
-    return h('a', { class: 'brand', href: href || 'index.html', 'aria-label': `${SITE.name} home` }, h('span', { class: 'brand-mark' }, icon(SITE.logo || 'shield', 20)), SITE.name);
+    return h('a', { class: 'brand', href: href || 'index.html', 'aria-label': t('home', { name: SITE.name }) }, h('span', { class: 'brand-mark' }, icon(SITE.logo || 'shield', 20)), SITE.name);
   }
   function themeButton() {
     const btn = h('button', { class: 'circle-btn', type: 'button' });
     const paint = () => {
       const dark = currentTheme() === 'dark';
       btn.replaceChildren(icon(dark ? 'sun' : 'moon', 17));
-      btn.setAttribute('aria-label', dark ? 'Use the light theme' : 'Use the dark theme');
+      btn.setAttribute('aria-label', t(dark ? 'theme.light' : 'theme.dark'));
     };
     btn.addEventListener('click', () => {
       setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
@@ -236,12 +399,12 @@
     return btn;
   }
   function header({ links, cta, signin }) {
-    const nav = h('nav', { class: 'nav', id: 'site-nav', 'aria-label': 'Main' }, links.map(([href, label]) => h('a', { href }, label)));
-    const menu = h('button', { class: 'circle-btn menu-btn', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'site-nav', 'aria-label': 'Open menu' }, icon('menu', 18));
+    const nav = h('nav', { class: 'nav', id: 'site-nav', 'aria-label': t('nav.main') }, links.map(([href, label]) => h('a', { href }, label)));
+    const menu = h('button', { class: 'circle-btn menu-btn', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'site-nav', 'aria-label': t('menu.open') }, icon('menu', 18));
     menu.addEventListener('click', () => {
       const open = nav.classList.toggle('open');
       menu.setAttribute('aria-expanded', String(open));
-      menu.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      menu.setAttribute('aria-label', t(open ? 'menu.close' : 'menu.open'));
       menu.replaceChildren(icon(open ? 'x' : 'menu', 18));
     });
     nav.addEventListener('click', (e) => {
@@ -255,6 +418,7 @@
       h(
         'div',
         { class: 'header-actions' },
+        languageSelect(),
         themeButton(),
         signin ? h('a', { class: 'header-link', href: signin.href }, signin.label, icon('arrow-up-right', 15)) : null,
         cta ? h('a', { class: 'button primary', href: cta.href }, cta.label, icon('arrow', 15)) : null,
@@ -263,15 +427,15 @@
     );
   }
   function copyButton(getText) {
-    const b = h('button', { class: 'copy', type: 'button' }, 'Copy');
+    const b = h('button', { class: 'copy', type: 'button' }, t('copy'));
     b.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(getText());
-        b.textContent = 'Copied';
+        b.textContent = t('copied');
       } catch {
-        b.textContent = 'Select and copy';
+        b.textContent = t('copy.manual');
       }
-      setTimeout(() => (b.textContent = 'Copy'), 1600);
+      setTimeout(() => (b.textContent = t('copy')), 1600);
     });
     return b;
   }
@@ -342,7 +506,7 @@
           { class: 'hero-visual' },
           h('div', { class: 'hero-art float', 'aria-hidden': 'true', html: H.art }),
           h('div', { class: 'visual-top' }, h('span', {}, H.top[0]), h('span', {}, H.top[1])),
-          h('small', { class: 'image-note' }, 'Original illustration')
+          h('small', { class: 'image-note' }, t('art.note'))
         ),
         h(
           'div',
@@ -366,12 +530,12 @@
     // tour: tabs + window stage + modules
     const T = SITE.tour;
     let tourIndex = 0;
-    const tabsEl = h('div', { class: 'product-tabs', role: 'group', 'aria-label': 'Explore the product' });
+    const tabsEl = h('div', { class: 'product-tabs', role: 'group', 'aria-label': t('tour.group') });
     const windowTitle = h('small');
-    const windowBody = h('div', { class: 'window-body', role: 'region', tabindex: '0', 'aria-label': 'Example output' });
+    const windowBody = h('div', { class: 'window-body', role: 'region', tabindex: '0', 'aria-label': t('tour.output') });
     const capTitle = h('h3');
     const capText = h('p');
-    const capLink = h('a', { class: 'text-link', href: labHref }, 'Open this in the lab', icon('arrow-up-right', 16));
+    const capLink = h('a', { class: 'text-link', href: labHref }, t('tour.open'), icon('arrow-up-right', 16));
     function paintTour() {
       const t = T.tabs[tourIndex];
       [...tabsEl.children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === tourIndex)));
@@ -402,7 +566,7 @@
       h(
         'div',
         { class: 'window reveal' },
-        h('div', { class: 'window-bar' }, h('span', {}, h('i'), h('i'), h('i')), windowTitle, h('span', { class: 'window-tag' }, T.tag || 'Real output')),
+        h('div', { class: 'window-bar' }, h('span', {}, h('i'), h('i'), h('i')), windowTitle, h('span', { class: 'window-tag' }, T.tag || t('tour.tag'))),
         windowBody,
         h('div', { class: 'window-caption' }, h('div', {}, capTitle, capText), capLink)
       ),
@@ -418,7 +582,7 @@
     // challenges (navy band)
     const C = SITE.challenges;
     let chalIndex = 0;
-    const list = h('div', { class: 'profile-list', role: 'group', 'aria-label': 'Hard parts to try' });
+    const list = h('div', { class: 'profile-list', role: 'group', 'aria-label': t('hard.group') });
     const detail = h('div', { class: 'profile-detail' });
     function paintChal() {
       const c = C.items[chalIndex];
@@ -428,8 +592,8 @@
         h('h3', {}, c.title),
         h('p', {}, c.text),
         h('ol', {}, c.steps.map((s) => h('li', {}, h('span', { html: s })))),
-        h('div', { class: 'expect' }, h('small', {}, 'You should see'), c.expect),
-        h('a', { class: 'button primary', href: c.lab || labHref }, 'Try it in the lab', icon('arrow', 17)),
+        h('div', { class: 'expect' }, h('small', {}, t('hard.see')), c.expect),
+        h('a', { class: 'button primary', href: c.lab || labHref }, t('hard.try'), icon('arrow', 17)),
         h('span', { class: 'emblem', 'aria-hidden': 'true' }, icon(c.icon, 110))
       );
       if (!reduced()) {
@@ -478,7 +642,7 @@
         h(
           'article',
           { class: 'card reveal' },
-          h('div', { class: 'card-top' }, h('span', {}, 'Stack'), icon('layers', 18)),
+          h('div', { class: 'card-top' }, h('span', {}, t('stack')), icon('layers', 18)),
           h('h3', {}, U.stackTitle),
           U.stack.map((g) => h('div', { class: 'stack-group' }, h('h4', {}, g.group), h('div', { class: 'pills' }, g.items.map((it) => h('span', { class: `pill${g.fresh ? ' new' : ''}` }, it))))),
           U.stackNote ? h('small', { class: 'fine' }, U.stackNote) : null
@@ -486,7 +650,7 @@
         h(
           'article',
           { class: 'card featured reveal' },
-          h('div', { class: 'card-top' }, h('span', {}, 'Measured, not claimed'), icon('gauge', 18)),
+          h('div', { class: 'card-top' }, h('span', {}, t('measured')), icon('gauge', 18)),
           h('h3', {}, U.proofTitle),
           h('div', { class: 'numbers' }, U.numbers.map(([v, label]) => h('div', {}, h('strong', {}, v), h('span', {}, label)))),
           h('ul', { class: 'checks' }, U.decisions.map(([t, s, href]) => h('li', {}, icon('check', 16), h('div', {}, href ? h('a', { href: `${SITE.repo}/blob/main/${href}`, rel: 'noopener' }, t) : t, h('small', {}, s))))),
@@ -497,7 +661,7 @@
         'div',
         { class: 'callout reveal' },
         icon('clock', 24),
-        h('div', {}, h('h3', {}, 'Not built yet'), h('p', {}, U.future.map((f, i) => [i ? ' · ' : '', h('strong', {}, f[0]), ` ${f[1]}`])))
+        h('div', {}, h('h3', {}, t('not.built')), h('p', {}, U.future.map((f, i) => [i ? ' · ' : '', h('strong', {}, f[0]), ` ${f[1]}`])))
       )
     );
 
@@ -506,7 +670,7 @@
     const about = h(
       'section',
       { id: 'about', class: 'section about' },
-      h('div', { class: 'reveal' }, h('div', { class: 'portrait', 'aria-hidden': 'true' }, AUTHOR.initials), eyebrow('Who built this'), h('h2', {}, AUTHOR.name, h('em', {}, AUTHOR.role))),
+      h('div', { class: 'reveal' }, h('div', { class: 'portrait', 'aria-hidden': 'true' }, AUTHOR.initials), eyebrow(t('about.eyebrow')), h('h2', {}, AUTHOR.name, h('em', {}, AUTHOR.role))),
       h(
         'div',
         { class: 'reveal' },
@@ -518,7 +682,7 @@
           { class: 'about-links' },
           h('a', { class: 'button secondary', href: AUTHOR.github, rel: 'noopener' }, 'GitHub', icon('arrow-up-right', 16)),
           h('a', { class: 'button secondary', href: AUTHOR.linkedin, rel: 'noopener' }, 'LinkedIn', icon('arrow-up-right', 16)),
-          h('a', { class: 'button ghost', href: SITE.repo, rel: 'noopener' }, 'This repository', icon('arrow-up-right', 16))
+          h('a', { class: 'button ghost', href: SITE.repo, rel: 'noopener' }, t('about.repo'), icon('arrow-up-right', 16))
         )
       )
     );
@@ -527,7 +691,7 @@
     const faq = h(
       'section',
       { id: 'faq', class: 'section faq' },
-      h('div', { class: 'reveal' }, eyebrow('Questions'), heading('h2', 'Asked often,', 'answered plainly.'), h('p', {}, 'Short answers. The long ones are in the decision records.')),
+      h('div', { class: 'reveal' }, eyebrow(t('faq.eyebrow')), heading('h2', t('faq.title1'), t('faq.title2')), h('p', {}, t('faq.text'))),
       h('div', { class: 'reveal' }, SITE.faq.map(([q, a]) => h('details', {}, h('summary', {}, q, icon('chevron-down', 18)), h('p', {}, a))))
     );
 
@@ -545,14 +709,14 @@
       'footer',
       { class: 'footer' },
       brand(),
-      h('p', {}, `${SITE.name} · MIT licence · fictional data only`, h('br'), 'Written by hand, tested against real services.'),
-      h('div', { class: 'footer-links' }, h('a', { href: SITE.repo, rel: 'noopener' }, 'Source'), h('a', { href: AUTHOR.github, rel: 'noopener' }, 'GitHub'), h('a', { href: AUTHOR.linkedin, rel: 'noopener' }, 'LinkedIn'))
+      h('p', {}, t('footer.line1', { name: SITE.name }), h('br'), t('footer.line2')),
+      h('div', { class: 'footer-links' }, h('a', { href: SITE.repo, rel: 'noopener' }, t('nav.source')), h('a', { href: AUTHOR.github, rel: 'noopener' }, 'GitHub'), h('a', { href: AUTHOR.linkedin, rel: 'noopener' }, 'LinkedIn'))
     );
 
     root.replaceChildren(
-      h('a', { class: 'skip', href: '#main' }, 'Skip to content'),
+      h('a', { class: 'skip', href: '#main' }, t('skip')),
       header({
-        links: [['#tour', 'Tour'], ['#hard-parts', 'Hard parts'], ['#run', 'Run it'], ['#under-the-hood', 'Under the hood'], ['#about', 'About']],
+        links: [['#tour', t('nav.tour')], ['#hard-parts', t('nav.hard')], ['#run', t('nav.run')], ['#under-the-hood', t('nav.under')], ['#about', t('nav.about')]],
         cta: { href: labHref, label: SITE.lab.cta || 'Enter the lab' },
         signin: SITE.lab.signin ? { href: labHref, label: SITE.lab.signin } : null,
       }),
@@ -596,12 +760,12 @@
         values[f.name] = input.value;
         const wrap = h('span', { class: 'input-icon' }, icon(f.icon || 'key', 18), input);
         if (f.type === 'password') {
-          const toggle = h('button', { type: 'button', 'aria-label': 'Show password', 'aria-pressed': 'false' }, icon('eye', 18));
+          const toggle = h('button', { type: 'button', 'aria-label': t('password.show'), 'aria-pressed': 'false' }, icon('eye', 18));
           toggle.addEventListener('click', () => {
             const show = input.type === 'password';
             input.type = show ? 'text' : 'password';
             toggle.setAttribute('aria-pressed', String(show));
-            toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            toggle.setAttribute('aria-label', t(show ? 'password.hide' : 'password.show'));
             toggle.replaceChildren(icon(show ? 'eye-off' : 'eye', 18));
           });
           wrap.append(toggle);
@@ -671,18 +835,18 @@
       paintStory(0);
 
       root.replaceChildren(
-        h('a', { class: 'skip', href: '#auth-main' }, 'Skip to the form'),
+        h('a', { class: 'skip', href: '#auth-main' }, t('skip.form')),
         h(
           'main',
           { class: 'auth', id: 'auth-main' },
           h(
             'section',
             { class: 'auth-side' },
-            h('div', { class: 'auth-top' }, brand(), themeButton()),
+            h('div', { class: 'auth-top' }, brand(), h('div', { class: 'header-actions' }, languageSelect(), themeButton())),
             h('div', { class: 'auth-center' }, card),
-            h('footer', { class: 'auth-bottom' }, h('span', {}, icon('shield', 15), cfg.bottom), h('small', {}, 'English · local environment'))
+            h('footer', { class: 'auth-bottom' }, h('span', {}, icon('shield', 15), cfg.bottom), h('small', {}, t('auth.local', { language: languageName() })))
           ),
-          h('section', { class: 'auth-scene', 'aria-label': 'Illustration' }, art, h('div', { class: 'auth-shade' }), h('span', { class: 'story-tag' }, h('i'), cfg.tag), story)
+          h('section', { class: 'auth-scene', 'aria-label': t('auth.scene') }, art, h('div', { class: 'auth-shade' }), h('span', { class: 'story-tag' }, h('i'), cfg.tag), story)
         )
       );
     });
@@ -740,7 +904,7 @@
     const root = $('#root');
     function build() {
       const panels = {};
-      const tabs = h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Lab sections' });
+      const tabs = h('div', { class: 'tabs', role: 'tablist', 'aria-label': t('lab.sections') });
       const body = h('div', {});
       L.tabs.forEach((t, i) => {
         const tabEl = h('button', { type: 'button', role: 'tab', id: `tab-${t.id}`, 'aria-selected': 'false', 'aria-controls': `panel-${t.id}`, tabindex: '-1' }, icon(t.icon, 18), t.label);
@@ -789,11 +953,11 @@
       }
       const logout =
         SITE.auth && SITE.auth.logout !== false
-          ? h('button', { class: 'button ghost small', type: 'button', onclick: () => { session.clear(); location.reload(); } }, 'Sign out')
+          ? h('button', { class: 'button ghost small', type: 'button', onclick: () => { session.clear(); location.reload(); } }, t('lab.signout'))
           : null;
       root.replaceChildren(
-        h('a', { class: 'skip', href: '#lab-main' }, 'Skip to the lab'),
-        h('header', { class: 'header' }, brand(), h('nav', { class: 'nav', 'aria-label': 'Main' }, h('a', { href: 'index.html' }, 'Overview'), h('a', { href: 'index.html#hard-parts' }, 'Hard parts'), h('a', { href: SITE.repo, rel: 'noopener' }, 'Source')), h('div', { class: 'header-actions' }, themeButton(), logout)),
+        h('a', { class: 'skip', href: '#lab-main' }, t('skip.lab')),
+        h('header', { class: 'header' }, brand(), h('nav', { class: 'nav', 'aria-label': t('nav.main') }, h('a', { href: 'index.html' }, t('nav.overview')), h('a', { href: 'index.html#hard-parts' }, t('nav.hard')), h('a', { href: SITE.repo, rel: 'noopener' }, t('nav.source'))), h('div', { class: 'header-actions' }, languageSelect(), themeButton(), logout)),
         h('main', { id: 'lab-main', tabindex: '-1' }, h('div', { class: 'lab-head arrive' }, eyebrow(L.eyebrow), h('h1', {}, L.title), h('p', {}, L.text), L.reset ? h('div', { class: 'row' }, button(L.reset.label, startOver, { small: true, ic: 'refresh' }), h('span', { class: 'hint-inline' }, L.reset.hint)) : null), h('div', { class: 'lab' }, tabs, body))
       );
       const wanted = location.hash.slice(1);
@@ -807,10 +971,11 @@
   }
 
   /* ------------------------------------------------------------------ boot */
-  window.Kit = { h, icon, ICONS, api, toast, pretty, button, badge, out, kv, box, labelled, copyButton, stage, session, store, authPage, AUTHOR, busy, setTheme };
-  showSplash();
+  window.Kit = { h, icon, ICONS, api, toast, pretty, button, badge, out, kv, box, labelled, copyButton, stage, session, store, authPage, AUTHOR, busy, setTheme, t, LANGS };
   const page = document.body.dataset.page;
-  const boot = () => {
+  const boot = async () => {
+    await applyLanguage(pickLanguage()); // English resolves at once; another language waits for its two small files
+    showSplash();
     try {
       if (page === 'lab') lab();
       else landing();

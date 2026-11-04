@@ -313,7 +313,7 @@ window.SITE = {
     ],
     proofTitle: 'What is measured, and the records behind it',
     numbers: [
-      ['74', 'tests, 38 of them on a real PostgreSQL with both services running'],
+      ['75', 'tests, 39 of them on a real PostgreSQL with both services running'],
       ['16', 'mutants of the critical rules, all caught by a test'],
       ['6', 'decision records, each with rejected alternatives'],
       ['0', 'errors under tsc --strict'],

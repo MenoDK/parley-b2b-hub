@@ -33,6 +33,7 @@ None.
 - Do not allow `LAB_MODE` with `APP_ENV=production`, and do not mount `/v1/lab` conditionally on anything else: [ADR 0006](adr/0006-a-lab-mode-that-cannot-reach-production.md).
 - Do not edit `site/transcripts.js` by hand: `make transcripts` records it from the running code, and a test compares them.
 - Do not add a script, font or stylesheet from another origin to `site/`; the Content Security Policy and the e2e suite refuse it.
+- Do not hand-edit one language table to "fix" a string and leave the others: `site/i18n/<code>.js` mirrors `content.js` key for key (English is the source and the fallback), and `e2e/tests/i18n.spec.ts` reads the tables. Strings that quote the lab's English buttons stay English on purpose.
 - Do not use a bare `ls` in this environment's shell (it is aliased and hangs); use `command ls`.
 
 ## 6. Decisions
@@ -49,9 +50,10 @@ None.
   shared style there and copy it, not here.
 - The browser container shares the shop's network namespace so the page is `http://localhost:3000`, a secure context (the
   lab signs with WebCrypto) without a browser flag; the container runs as the caller's user so files are deletable.
+- `kit.css`, `kit.js` and `i18n/ui.js` (the page chrome in 14 languages) are shared; the per-language overlays `i18n/<code>.js` belong to each repository. With `?lang=` in the address the saved language lost after a reload; `switchLanguage` now rewrites the parameter.
 
 ## 8. Suite state
 
-Measured on 2026-11-01: 74 tests (36 pure, 38 against a real PostgreSQL with both services running), 20 browser tests
+Measured on 2026-11-01: 75 tests (36 pure, 39 against a real PostgreSQL with both services running), 42 browser tests
 (`make e2e`, against the Compose stack, with axe scans of the landing page and every lab tab in both themes), 16 of 16 mutants
 caught (`make mutate`), `biome` and `tsc --strict` clean, `hadolint` and `actionlint` clean.
