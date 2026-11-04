@@ -2593,6 +2593,25 @@ svg {
 :lang(ur) .eyebrow {
   text-transform: none;
 }
+/* Fonts for the scripts the Latin stack does not cover; the browser still falls back glyph by glyph after these. */
+:lang(ar) {
+  --sans: 'Noto Sans Arabic', 'Vazirmatn', 'Segoe UI', Tahoma, system-ui, sans-serif;
+}
+:lang(ur) {
+  --sans: 'Noto Naskh Arabic', 'Noto Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif;
+}
+:lang(hi) {
+  --sans: 'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', system-ui, sans-serif;
+}
+:lang(bn) {
+  --sans: 'Noto Sans Bengali', 'Nirmala UI', 'Vrinda', system-ui, sans-serif;
+}
+/* Artwork, recorded output and commands are English and positioned for left-to-right: SVG text anchored at its start
+   would run off the card if the page direction leaked in. */
+[dir='rtl'] :is(.hero-art, .window-body, .term pre, pre.out) {
+  direction: ltr;
+  text-align: left;
+}
 @media (max-width: 767px) {
   /* On a phone the picker is just the globe, a round button like its neighbours; the list it opens still shows names. */
   .lang-select {

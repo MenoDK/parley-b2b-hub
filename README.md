@@ -7,7 +7,7 @@
 [![CI](https://github.com/MenoDK/parley-b2b-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/MenoDK/parley-b2b-hub/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-22-339933)
 ![Typing](https://img.shields.io/badge/tsc-strict-success)
-![Tests](https://img.shields.io/badge/tests-75%20(39%20on%20real%20PostgreSQL)%20·%2042%20browser%20·%2016%20mutants%20caught-success)
+![Tests](https://img.shields.io/badge/tests-75%20(39%20on%20real%20PostgreSQL)%20·%2044%20browser%20·%2016%20mutants%20caught-success)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ![The landing page](docs/img/landing.png)

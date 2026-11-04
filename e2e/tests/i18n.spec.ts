@@ -119,6 +119,25 @@ test.describe('languages', () => {
     });
   }
 
+  for (const code of ['ar', 'ur'] as const) {
+    test(`${code}: the artwork is English and keeps its left-to-right layout, so no label runs off its frame`, async ({
+      page,
+    }) => {
+      await page.goto(`/?lang=${code}`);
+      await leaveSplash(page);
+      const outside = await page.evaluate(() => {
+        const frame = document.querySelector('.hero-art svg');
+        if (!frame) return 0;
+        const box = frame.getBoundingClientRect();
+        return [...frame.querySelectorAll('text')].filter((t) => {
+          const r = t.getBoundingClientRect();
+          return r.left < box.left - 1 || r.right > box.right + 1;
+        }).length;
+      });
+      expect(outside).toBe(0);
+    });
+  }
+
   // Right-to-left is where layout and contrast regress first, and Chinese is where the type scale does.
   for (const code of ['ar', 'ur', 'zh'] as const) {
     test(`${code}: passes the accessibility scan`, async ({ page }) => {

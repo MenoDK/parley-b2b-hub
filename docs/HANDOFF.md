@@ -51,9 +51,10 @@ None.
 - The browser container shares the shop's network namespace so the page is `http://localhost:3000`, a secure context (the
   lab signs with WebCrypto) without a browser flag; the container runs as the caller's user so files are deletable.
 - `kit.css`, `kit.js` and `i18n/ui.js` (the page chrome in 14 languages) are shared; the per-language overlays `i18n/<code>.js` belong to each repository. With `?lang=` in the address the saved language lost after a reload; `switchLanguage` now rewrites the parameter.
+- Right-to-left: SVG text anchored at its start ran off the artwork card when the page direction leaked into it; the artwork, recorded output and commands are forced left-to-right and a test measures the labels.
 
 ## 8. Suite state
 
-Measured on 2026-11-01: 75 tests (36 pure, 39 against a real PostgreSQL with both services running), 42 browser tests
+Measured on 2026-11-01: 75 tests (36 pure, 39 against a real PostgreSQL with both services running), 44 browser tests
 (`make e2e`, against the Compose stack, with axe scans of the landing page and every lab tab in both themes), 16 of 16 mutants
 caught (`make mutate`), `biome` and `tsc --strict` clean, `hadolint` and `actionlint` clean.
